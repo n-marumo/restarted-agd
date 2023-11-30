@@ -20,7 +20,9 @@ def df_to_sparse_matrix(df: pd.DataFrame):
 
 
 def train_test_random(train_frac, key):
-    df = pd.read_table("../dataset/ml-100k/u.data", names=("user", "item", "rating", "time"))
+    df = pd.read_table(
+        "../dataset/ml-100k/u.data", names=("user", "item", "rating", "time")
+    )
     key, subkey = jax.random.split(key)
     random_state = jax.random.randint(subkey, (1,), 0, 2**31)[0].item()
     df = df.sample(frac=1, random_state=random_state)
@@ -29,15 +31,11 @@ def train_test_random(train_frac, key):
     return df_to_sparse_matrix(df[:n_train]), df_to_sparse_matrix(df[n_train:-1])
 
 
-def train_test_u1():
-    df_train = pd.read_table("../dataset/ml-100k/u1.base", names=("user", "item", "rating", "time"))
-    df_test = pd.read_table("../dataset/ml-100k/u1.test", names=("user", "item", "rating", "time"))
-    return df_to_sparse_matrix(df_train), df_to_sparse_matrix(df_test)
-
-
 def get_traindata_all(datasize):
     if datasize == "100k":
-        df_train = pd.read_table("../dataset/ml-100k/u.data", names=("user", "item", "rating", "time"))
+        df_train = pd.read_table(
+            "../dataset/ml-100k/u.data", names=("user", "item", "rating", "time")
+        )
     elif datasize == "1m":
         df_train = pd.read_table(
             "../dataset/ml-1m/ratings.dat",
@@ -48,7 +46,9 @@ def get_traindata_all(datasize):
 
 
 class Problem:
-    def __init__(self, datasize, regularizer, init, dim_feature, reg_param, sigma_init=0, seed=0):
+    def __init__(
+        self, datasize, regularizer, init, dim_feature, reg_param, sigma_init=0, seed=0
+    ):
         key = jax.random.PRNGKey(seed)
         self.dim_feat = dim_feature
         self.reg_param = reg_param
@@ -94,7 +94,10 @@ class Problem:
         return [u @ np.diag(np.sqrt(s)), vT.T @ np.diag(np.sqrt(s))]
 
     def unflatten(self, x):
-        return [p.reshape(s) for (s, p) in zip(self.param_shape, jnp.split(x, self.param_size_cumsum))]
+        return [
+            p.reshape(s)
+            for (s, p) in zip(self.param_shape, jnp.split(x, self.param_size_cumsum))
+        ]
 
     def loss(self, z):
         return jnp.mean(jnp.square(z)) / 2
@@ -112,4 +115,7 @@ class Problem:
     @functools.partial(jax.jit, static_argnums=(0,))
     def func(self, x):
         u, v = self.unflatten(x)
-        return self.loss(self.model(u, v)) + self.regularizer(u, v) * self.reg_param / self.n_train
+        return (
+            self.loss(self.model(u, v))
+            + self.regularizer(u, v) * self.reg_param / self.n_train
+        )
