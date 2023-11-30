@@ -39,6 +39,11 @@ common_marker_option = {
     "color": "none",
     "markersize": 12,
 }
+linestyles = [
+    "solid",
+    "dotted",
+    "dashed",
+]
 
 
 def get_instance_paths(problem_name):
@@ -55,9 +60,7 @@ def trim_data(df: pd.DataFrame, maxiter, last):
     return df
 
 
-def make_figures_allparams_onefigure(
-    problem_name, maxiter=1000000, last=False, legend=False
-):
+def make_figure(problem_name, maxiter=1000000, last=False, legend=False):
     for instance_path in get_instance_paths(problem_name):
         if instance_path.name.startswith("_"):
             continue
@@ -76,21 +79,14 @@ def make_figures_allparams_onefigure(
                     df[yaxis],
                     label=ylabel,
                     color=colors[i],
+                    linestyle=linestyles[i],
                     **common_line_option,
                 )
 
             # plot markers
             k_restart = df[df["iter_inner"] == 0].index.tolist()
-            k_suc = [
-                k
-                for k in k_restart
-                if k > df.index[0] and df.loc[k - 1, "L"] > df.loc[k, "L"]
-            ]
-            k_unsuc = [
-                k
-                for k in k_restart
-                if k > df.index[0] and df.loc[k - 1, "L"] < df.loc[k, "L"]
-            ]
+            k_suc = [k for k in k_restart if k > df.index[0] and df.loc[k - 1, "L"] > df.loc[k, "L"]]
+            k_unsuc = [k for k in k_restart if k > df.index[0] and df.loc[k - 1, "L"] < df.loc[k, "L"]]
 
             for i, x in enumerate([k_suc, k_unsuc]):
                 ax.plot(
@@ -134,9 +130,7 @@ def make_legend():
     legend_fig = plt.figure("Legend plot", figsize=figsize)
     ax = fig.add_subplot(111)
 
-    lines = [
-        ax.plot(dd, dd, color=colors[i], **common_line_option)[0] for i in range(M)
-    ]
+    lines = [ax.plot(dd, dd, color=colors[i], linestyle=linestyles[i], **common_line_option)[0] for i in range(M)]
     lines += [
         ax.plot(
             dd,
@@ -163,6 +157,6 @@ def make_legend():
 
 
 for problem_name in problem_names:
-    make_figures_allparams_onefigure(problem_name, maxiter=500, last=False)
-    make_figures_allparams_onefigure(problem_name, maxiter=500, last=True)
+    make_figure(problem_name, maxiter=500, last=False)
+    make_figure(problem_name, maxiter=500, last=True)
 make_legend()

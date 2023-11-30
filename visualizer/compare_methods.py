@@ -31,9 +31,7 @@ def trim_data(df: pd.DataFrame, timeout, tol_obj):
     return df
 
 
-def make_figure(
-    problem_name, line_option, timeout=1e5, tol_obj=0, legend=False, group=1
-):
+def make_figure(problem_name, line_option, timeout=1e5, tol_obj=0, legend=False, group=1):
     xlabels = {
         "elapsed_time": "Wall clock time [sec]",
         # "grad": r"\# Gradient evaluations",
@@ -107,12 +105,14 @@ line_option = {
         "color": cmap(1),
         "alpha": ALPHA,
         "linewidth": 2,
+        "linestyle": "dashed",
     },
     "ll2022": {
         "label": "LL2022",
         "color": cmap(2),
         "alpha": ALPHA,
         "linewidth": 2,
+        "linestyle": "dashdot",
     },
 }
 make_figure("classification_mnist", line_option, timeout=500)
@@ -133,12 +133,14 @@ line_option = {
         "color": cmap(0),
         "alpha": ALPHA,
         "linewidth": 2,
+        "linestyle": "dotted",
     },
     "oc2015": {
         "label": "OC2015",
         "color": cmap(1),
         "alpha": ALPHA,
         "linewidth": 2,
+        "linestyle": "dashed",
     },
     "scipy_L-BFGS-B": {
         "label": "L-BFGS",

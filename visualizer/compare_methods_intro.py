@@ -96,6 +96,7 @@ def make_legend(vertical=False):
                 "c": cmap(0),
                 "alpha": ALPHA,
                 "lw": 2,
+                "linestyle": "dotted",
             },
         },
         {
@@ -104,6 +105,7 @@ def make_legend(vertical=False):
                 "c": cmap(1),
                 "alpha": ALPHA,
                 "lw": 2,
+                "linestyle": "dashed",
             },
         },
         {
@@ -112,6 +114,7 @@ def make_legend(vertical=False):
                 "c": cmap(2),
                 "alpha": ALPHA,
                 "lw": 2,
+                "linestyle": "dashdot",
             },
         },
     ]
@@ -162,6 +165,7 @@ def make_figures_various_params():
                     "color": cmap(0),
                     "alpha": ALPHA,
                     "linewidth": 2,
+                    "linestyle": "dotted",
                 },
             },
             {
@@ -171,6 +175,7 @@ def make_figures_various_params():
                     "color": cmap(1),
                     "alpha": ALPHA,
                     "linewidth": 2,
+                    "linestyle": "dashed",
                 },
             },
             {
@@ -180,12 +185,11 @@ def make_figures_various_params():
                     "color": cmap(2),
                     "alpha": ALPHA,
                     "linewidth": 2,
+                    "linestyle": "dashdot",
                 },
             },
         ]
-        plot_data(
-            "rosenbrock", algs, {"L": L, "M": M}, "obj", timeout=10, tol_obj=1e-15
-        )
+        plot_data("rosenbrock", algs, {"L": L, "M": M}, "obj", timeout=10, tol_obj=1e-15)
 
 
 make_figures_various_params()
