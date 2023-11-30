@@ -31,7 +31,7 @@ class GradientDescent(Base):
         self.params = dict(self.default_params)
         self.params.update(params)
         self.x = x0
-        self.func_x = oracle.func(x0)
+        self.func_x, self.grad_x = oracle.func_grad(x0)
         self.L = self.params["L_init"]
 
     @property
@@ -42,20 +42,91 @@ class GradientDescent(Base):
 
     @property
     def solutions(self):
-        return [self.x]
+        return [
+            {"sol": self.x, "obj": self.func_x, "grad": self.grad_x},
+        ]
 
     def update(self, oracle: internal.Oracle):
-        grad_x = oracle.grad(self.x)
         while True:
-            y = self.x - grad_x / self.L
-            func_y = oracle.func(y)
+            y = self.x - self.grad_x / self.L
+            func_y, grad_y = oracle.func_grad(y)
             u = y - self.x
-            if func_y <= self.func_x + jnp.vdot(grad_x, u) + self.L / 2 * jnp.linalg.norm(u) ** 2:
+            if func_y <= self.func_x + jnp.vdot(self.grad_x, u) + self.L / 2 * jnp.linalg.norm(u) ** 2:
                 break
             else:
                 self.L *= self.params["L_inc"]
         self.x = y
         self.func_x = func_y
+        self.grad_x = grad_y
+        self.L *= self.params["L_dec"]
+        self.iter += 1
+
+
+# https://link.springer.com/article/10.1007/s10208-013-9150-3
+# Algorithm 1 with q = 0 and gradient restart scheme in Section 3.2
+class OC2015(Base):
+    default_params = {
+        "L_init": 1e0,
+        "L_inc": 2,
+        "L_dec": 0.9,
+    }
+
+    def __init__(self, params, x0, oracle: internal.Oracle):
+        super().__init__()
+        self.params = dict(self.default_params)
+        self.params.update(params)
+        self.L = self.params["L_init"]
+        self.init_epoch(x0, *oracle.func_grad(x0))
+
+    def init_epoch(self, x, f, g):
+        self.x = self.y = self.y_bar = x
+        self.func_x = self.func_y = f
+        self.grad_x = self.grad_y = g
+        self.iter_inner = 0
+        self.theta = 1.0
+
+    @property
+    def recorded_params(self):
+        return {
+            "L": self.L,
+            "iter_inner": self.iter_inner,
+        }
+
+    @property
+    def solutions(self):
+        return [
+            {"sol": self.x, "obj": self.func_x, "grad": self.grad_x},
+        ]
+
+    def update(self, oracle: internal.Oracle):
+        # keep old information
+        theta_old = self.theta
+        x_old = self.x
+        func_x_old = self.func_x
+        grad_x_old = self.grad_x
+
+        # backtracking
+        while True:
+            self.x = self.y - self.grad_y / self.L
+            self.func_x, self.grad_x = oracle.func_grad(self.x)
+            u = self.x - self.y
+            if self.func_x <= self.func_y + jnp.vdot(self.grad_y, u) + self.L / 2 * jnp.linalg.norm(u) ** 2:
+                break
+            else:
+                self.L *= self.params["L_inc"]
+
+        # check restart
+        if jnp.vdot(self.grad_y, self.x - x_old) > 0:
+            self.init_epoch(x_old, func_x_old, grad_x_old)
+
+        else:
+            # update theta and y
+            self.theta = theta_old * (jnp.sqrt(theta_old**2 + 4) - theta_old) / 2
+            beta = theta_old * (1 - theta_old) / (theta_old**2 + self.theta)
+            self.y = self.x + beta * (self.x - x_old)
+            self.func_y, self.grad_y = oracle.func_grad(self.y)
+            self.iter_inner += 1
+
         self.L *= self.params["L_dec"]
         self.iter += 1
 
@@ -77,8 +148,8 @@ class OurRestartedAGD(Base):
 
     def init_epoch(self, x, func, grad):
         self.x = self.y = self.y_bar = x
-        self.grad_x = self.grad_y = self.grad_innerinit = grad
         self.func_x = self.func_innerinit = func
+        self.grad_x = self.grad_y = self.grad_innerinit = grad
         self.S = 0
         self.Z = 1
         self.iter_inner = 0
@@ -159,6 +230,229 @@ class OurRestartedAGD(Base):
 
         # update Z, y_bar
         self.y_bar = (self.y + theta_k * self.Z * self.y_bar) / (1 + theta_k * self.Z)
+        self.Z = 1 + theta_k * self.Z
+
+
+class OurRestartedAGDArmijoBest(Base):
+    default_params = {
+        "L_init": 1e0,
+        "L_inc": 2,
+        "L_dec": 0.9,
+        "M_init": 1e-16,
+    }
+
+    def __init__(self, params, x0, oracle: internal.Oracle):
+        super().__init__()
+        self.params = dict(self.default_params)
+        self.params.update(params)
+        self.L = self.params["L_init"]
+        self.x_best = x0
+        self.func_best, self.grad_best = oracle.func_grad(x0)
+        self.init_epoch()
+
+    def init_epoch(self):
+        self.x = self.y = self.y_bar = self.x_best
+        self.func_x = self.func_y = self.func_best
+        self.grad_x = self.grad_y = self.grad_best
+        self.S = 0
+        self.Z = 1
+        self.iter_inner = 0
+        self.M = self.params["M_init"]
+
+    @property
+    def recorded_params(self):
+        return {
+            "L": self.L,
+            "M": self.M,
+            "iter_inner": self.iter_inner,
+        }
+
+    @property
+    def solutions(self):
+        return [
+            {"sol": self.x, "obj": self.func_x, "grad": self.grad_x},
+            {"sol": self.y, "obj": self.func_y, "grad": self.grad_y},
+            {"sol": self.y_bar, "obj": None, "grad": None},
+        ]
+
+    def theta(self, k):
+        return k / (k + 1)
+
+    def safe_div(self, a, b):
+        if a > 0 and b > 0:
+            return a / b
+        else:
+            return 0
+
+    def update_best(self, x, fx, gx):
+        if fx < self.func_best:
+            self.x_best = x
+            self.func_best = fx
+            self.grad_best = gx
+
+    def update(self, oracle: internal.Oracle):
+        self.iter += 1
+        self.iter_inner += 1
+        k = self.iter_inner
+        theta_k = self.theta(k)
+
+        # keep old information
+        x_old = self.x
+        grad_x_old = self.grad_x
+
+        # update x
+        self.x = self.y - self.grad_y / self.L
+        self.func_x, self.grad_x = oracle.func_grad(self.x)
+        self.update_best(self.x, self.func_x, self.grad_x)
+        self.S += jnp.linalg.norm(self.x - x_old) ** 2
+
+        # check if L is large enough
+        if self.func_x - self.func_y > -self.L / 2 * jnp.linalg.norm(self.x - self.y) ** 2:
+            self.init_epoch()
+            self.L *= self.params["L_inc"]
+            return
+
+        # update y
+        self.y = self.x + theta_k * (self.x - x_old)
+        self.func_y, self.grad_y = oracle.func_grad(self.y)
+        self.update_best(self.y, self.func_y, self.grad_y)
+
+        # update S and M
+        u = self.y - self.x
+        norm_v = jnp.linalg.norm(self.x - x_old)
+        self.S += norm_v**2
+        self.M = max(
+            self.M,
+            self.safe_div(
+                12 * (self.func_y - self.func_x - (jnp.vdot((self.grad_y + self.grad_x) / 2, u))),
+                jnp.linalg.norm(u) ** 3,
+            ),
+            self.safe_div(
+                jnp.linalg.norm(self.grad_y + theta_k * grad_x_old - (1 + theta_k) * self.grad_x),
+                theta_k * norm_v**2,
+            ),
+        )
+
+        # check restart condition
+        if (self.M / self.L) ** 2 * self.S > (1 - theta_k) ** 5:
+            self.init_epoch()
+            self.L *= self.params["L_dec"]
+            return
+
+        # update Z, y_bar
+        self.y_bar = (self.y + theta_k * self.Z * self.y_bar) / (1 + theta_k * self.Z)
+        self.Z = 1 + theta_k * self.Z
+
+
+class OurRestartedAGDArmijoBestYbar(Base):
+    default_params = {
+        "L_init": 1e0,
+        "L_inc": 2,
+        "L_dec": 0.9,
+        "M_init": 1e-16,
+    }
+
+    def __init__(self, params, x0, oracle: internal.Oracle):
+        super().__init__()
+        self.params = dict(self.default_params)
+        self.params.update(params)
+        self.L = self.params["L_init"]
+        self.x_best = x0
+        self.func_best, self.grad_best = oracle.func_grad(x0)
+        self.init_epoch()
+
+    def init_epoch(self):
+        self.x = self.y = self.y_bar = self.x_best
+        self.func_x = self.func_y = self.func_best
+        self.grad_x = self.grad_y = self.grad_best
+        self.S = 0
+        self.Z = 1
+        self.iter_inner = 0
+        self.M = self.params["M_init"]
+
+    @property
+    def recorded_params(self):
+        return {
+            "L": self.L,
+            "M": self.M,
+            "iter_inner": self.iter_inner,
+        }
+
+    @property
+    def solutions(self):
+        return [
+            {"sol": self.x, "obj": self.func_x, "grad": self.grad_x},
+            {"sol": self.y, "obj": self.func_y, "grad": self.grad_y},
+            {"sol": self.y_bar, "obj": None, "grad": None},
+        ]
+
+    def theta(self, k):
+        return k / (k + 1)
+
+    def safe_div(self, a, b):
+        if a > 0 and b > 0:
+            return a / b
+        else:
+            return 0
+
+    def update_best(self, x, fx, gx):
+        if fx < self.func_best:
+            self.x_best = x
+            self.func_best = fx
+            self.grad_best = gx
+
+    def update(self, oracle: internal.Oracle):
+        self.iter += 1
+        self.iter_inner += 1
+        k = self.iter_inner
+        theta_k = self.theta(k)
+
+        # keep old information
+        x_old = self.x
+        grad_x_old = self.grad_x
+
+        # update x
+        self.x = self.y - self.grad_y / self.L
+        self.func_x, self.grad_x = oracle.func_grad(self.x)
+        self.update_best(self.x, self.func_x, self.grad_x)
+        self.S += jnp.linalg.norm(self.x - x_old) ** 2
+
+        # check if L is large enough
+        if self.func_x - self.func_y > -self.L / 2 * jnp.linalg.norm(self.x - self.y) ** 2:
+            self.init_epoch()
+            self.L *= self.params["L_inc"]
+            return
+
+        # update y
+        self.y = self.x + theta_k * (self.x - x_old)
+        self.func_y, self.grad_y = oracle.func_grad(self.y)
+        self.update_best(self.y, self.func_y, self.grad_y)
+
+        # update S and M
+        u = self.y - self.x
+        norm_v = jnp.linalg.norm(self.x - x_old)
+        self.S += norm_v**2
+        self.M = max(
+            self.M,
+            self.safe_div(
+                12 * (self.func_y - self.func_x - (jnp.vdot((self.grad_y + self.grad_x) / 2, u))),
+                jnp.linalg.norm(u) ** 3,
+            ),
+            self.safe_div(
+                jnp.linalg.norm(self.grad_y + theta_k * grad_x_old - (1 + theta_k) * self.grad_x),
+                theta_k * norm_v**2,
+            ),
+        )
+
+        # check restart condition
+        if (self.M / self.L) ** 2 * self.S > (1 - theta_k) ** 5:
+            self.init_epoch()
+            self.L *= self.params["L_dec"]
+            return
+
+        # update y_bar and Z
+        self.y_bar = (self.y + theta_k * self.Z * self.y_bar) / (1 + theta_k * self.Z)
+        self.update_best(self.y_bar, *oracle.func_grad(self.y_bar))
         self.Z = 1 + theta_k * self.Z
 
 

@@ -35,16 +35,20 @@ def train_test_u1():
     return df_to_sparse_matrix(df_train), df_to_sparse_matrix(df_test)
 
 
-def get_traindata_all(size):
-    if size == "100k":
+def get_traindata_all(datasize):
+    if datasize == "100k":
         df_train = pd.read_table("../dataset/ml-100k/u.data", names=("user", "item", "rating", "time"))
-    elif size == "1m":
-        df_train = pd.read_table("../dataset/ml-1m/ratings.dat", names=("user", "item", "rating", "time"), sep="::")
+    elif datasize == "1m":
+        df_train = pd.read_table(
+            "../dataset/ml-1m/ratings.dat",
+            names=("user", "item", "rating", "time"),
+            sep="::",
+        )
     return df_to_sparse_matrix(df_train)
 
 
 class Problem:
-    def __init__(self, size, regularizer, init, dim_feature, reg_param, sigma_init, seed=0):
+    def __init__(self, datasize, regularizer, init, dim_feature, reg_param, sigma_init=0, seed=0):
         key = jax.random.PRNGKey(seed)
         self.dim_feat = dim_feature
         self.reg_param = reg_param
@@ -53,7 +57,7 @@ class Problem:
         elif regularizer == "quartic":
             self.regularizer = self.quartic
 
-        self.data_train = get_traindata_all(size)
+        self.data_train = get_traindata_all(datasize)
 
         self.n_train = len(self.data_train["indices"][0])
         self.num_user = max(self.data_train["indices"][0]) + 1
