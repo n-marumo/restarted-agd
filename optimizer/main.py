@@ -13,8 +13,6 @@ SCIPY_TOL = 1e-15
 class SmoothNonconvexMin:
     algorithms = {
         "ourragd": method.OurRestartedAGD,
-        "ourragdArBe": method.OurRestartedAGDArmijoBest,
-        "ourragdArBeYb": method.OurRestartedAGDArmijoBestYbar,
         "gd": method.GradientDescent,
         "jnj2018": method.JNJ2018,
         "ll2022": method.LL2022,

@@ -87,57 +87,35 @@ def execute_rosenbrock(algs, timeout, tol_obj, tol_grad, inst_params):
     instance = problem.rosenbrock.Problem(a=a, b=b, d=d, x0=x0)
     save_folder = f"{problem_folder}/d{d}_a{a}_b{b}_x0{x0}"
     print(save_folder)
-    execute(
-        instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder
-    )
+    execute(instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
     # execute_scipy(instance, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
 
 
-def execute_classification_mnist(
-    algs, timeout, tol_obj, tol_grad, train_size=10000, layer_size=[32, 16]
-):
+def execute_classification_mnist(algs, timeout, tol_obj, tol_grad, train_size=10000, layer_size=[32, 16]):
     problem_folder = "./result/classification_mnist"
     seed = 0
 
     instance = problem.classification_mnist.Problem(
         activation="sigmoid", layer_size=layer_size, train_size=train_size, seed=seed
     )
-    save_folder = (
-        f"{problem_folder}/ls{'-'.join(map(str, layer_size))}_ts{train_size}_seed{seed}"
-    )
+    save_folder = f"{problem_folder}/ls{'-'.join(map(str, layer_size))}_ts{train_size}_seed{seed}"
     print(save_folder)
-    execute(
-        instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder
-    )
-    execute_scipy(
-        instance, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder
-    )
+    execute(instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
+    execute_scipy(instance, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
 
 
-def execute_ae_mnist(
-    algs, timeout, tol_obj, tol_grad, train_size=10000, layer_size=[32, 16, 32]
-):
+def execute_ae_mnist(algs, timeout, tol_obj, tol_grad, train_size=10000, layer_size=[32, 16, 32]):
     problem_folder = "./result/ae_mnist"
     seed = 0
 
-    instance = problem.ae_mnist.Problem(
-        layer_size=layer_size, train_size=train_size, seed=seed
-    )
-    save_folder = (
-        f"{problem_folder}/ls{'-'.join(map(str, layer_size))}_ts{train_size}_seed{seed}"
-    )
+    instance = problem.ae_mnist.Problem(layer_size=layer_size, train_size=train_size, seed=seed)
+    save_folder = f"{problem_folder}/ls{'-'.join(map(str, layer_size))}_ts{train_size}_seed{seed}"
     print(save_folder)
-    execute(
-        instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder
-    )
-    execute_scipy(
-        instance, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder
-    )
+    execute(instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
+    execute_scipy(instance, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
 
 
-def execute_mf_movielens(
-    algs, timeout, tol_obj, tol_grad, datasize="100k", dim_feature=100
-):
+def execute_mf_movielens(algs, timeout, tol_obj, tol_grad, datasize="100k", dim_feature=100):
     problem_folder = f"./result/mf_movielens{datasize}"
     reg = "quartic"
     reg_param = 1e0
@@ -150,16 +128,10 @@ def execute_mf_movielens(
         dim_feature=dim_feature,
         reg_param=reg_param,
     )
-    save_folder = (
-        f"{problem_folder}/reg{reg}{reg_param}_init{init}_dimfeat{dim_feature}"
-    )
+    save_folder = f"{problem_folder}/reg{reg}{reg_param}_init{init}_dimfeat{dim_feature}"
     print(save_folder)
-    execute(
-        instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder
-    )
-    execute_scipy(
-        instance, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder
-    )
+    execute(instance, algs, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
+    execute_scipy(instance, timeout, tol_obj, tol_grad, save=True, save_folder=save_folder)
 
 
 execute_rosenbrock(
